@@ -15,8 +15,7 @@ class ControllerBase
 
   # Helper method to alias @already_built_response
   def already_built_response?
-    return true if @already_built_response
-    false
+    @already_built_response
   end
 
   # Set the response status code and header
@@ -26,6 +25,7 @@ class ControllerBase
     @res["Location"] = url
     nil
     @already_built_response = @res["Location"]
+    session.store_session(@res)
   end
 
   # Populate the response with content.
@@ -33,8 +33,10 @@ class ControllerBase
   # Raise an error if the developer tries to double render.
   def render_content(content, content_type = 'text/html')
     raise 'already built' if @already_built_response
-    @already_built_response = @res.write(content)
+    @already_built_response = !@already_built_response 
+    @res.write(content)
     @res['Content-Type'] = content_type
+    session.store_session(@res)
     nil    
   end
 
@@ -43,7 +45,7 @@ class ControllerBase
   def render(template_name)
     dir_path = File.dirname(__FILE__)
     template_path = File.join(
-      dir_path, "views", "#{template_name}.html.erb"
+      dir_path, "..", "views", self.class.name.underscore, "#{template_name}.html.erb"
     )
   
     template_code = File.read(template_path)
@@ -63,9 +65,9 @@ class ControllerBase
   # end
   # 
   # # method exposing a `Session` object
-  # def session
-  #   @session ||= Session.new(@req)
-  # end
+  def session
+    @session ||= Session.new(@req)
+  end
   
 
   # use this with the router to call action_name (:index, :show, :create...)
